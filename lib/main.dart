@@ -123,23 +123,27 @@ class _ShibakiScreenState extends State<ShibakiScreen> {
   }
 
   void _onTap() {
-    if (_isRunning) {
-      setState(() {
-        _tapCount++;
-      });
-    }
-  }
-
-  void _finish() {
-    _timer?.cancel();
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacementNamed(
-        context,
-        '/result',
-        arguments: _tapCount,
-      );
+  if (_isRunning && _remainingTime > 0) {  // 残り時間チェック追加
+    setState(() {
+      _tapCount++;
     });
   }
+}
+
+void _finish() {
+  _timer?.cancel();
+  setState(() {  // setStateで_isRunningをfalseに
+    _isRunning = false;
+  });
+  Future.delayed(const Duration(seconds: 2), () {
+    Navigator.pushReplacementNamed(
+      context,
+      '/result',
+      arguments: _tapCount,
+    );
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
