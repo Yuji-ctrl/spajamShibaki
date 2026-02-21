@@ -1,7 +1,8 @@
+import 'dart:typed_data';  // Uint8List用
+import 'package:flutter/foundation.dart';  // kIsWeb用
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:async';
-// pubspec.yaml追加後
-// ShibakiScreenでボタン追加し、getImage(ImgSource.Both)で画像取得後Image.file表示。[]
 
 void main() {
   runApp(const MyApp());
@@ -98,6 +99,8 @@ class _ShibakiScreenState extends State<ShibakiScreen> {
   int _tapCount = 0;
   int _remainingTime = 10;
   Timer? _timer;
+  Uint8List? _imageBytes;  // Web/Mobile共通: bytesで保持
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -105,7 +108,33 @@ class _ShibakiScreenState extends State<ShibakiScreen> {
     super.dispose();
   }
 
+  // 画像ピック（Web/Mobile自動対応）
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,  // ギャラリー優先（カメラも可）
+        imageQuality: 80,  // 容量軽減
+      );
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _imageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('画像選択エラー: $e')),
+      );
+    }
+  }
+
   void _startShibaki() {
+    if (_imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('先に写真を選択してください')),
+      );
+      return;
+    }
     setState(() {
       _isRunning = true;
       _tapCount = 0;
@@ -123,27 +152,26 @@ class _ShibakiScreenState extends State<ShibakiScreen> {
   }
 
   void _onTap() {
-  if (_isRunning && _remainingTime > 0) {  // 残り時間チェック追加
+    if (_isRunning && _remainingTime > 0) {
+      setState(() {
+        _tapCount++;
+      });
+    }
+  }
+
+  void _finish() {
+    _timer?.cancel();
     setState(() {
-      _tapCount++;
+      _isRunning = false;
+    });
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pushReplacementNamed(
+        context,
+        '/result',
+        arguments: _tapCount,
+      );
     });
   }
-}
-
-void _finish() {
-  _timer?.cancel();
-  setState(() {  // setStateで_isRunningをfalseに
-    _isRunning = false;
-  });
-  Future.delayed(const Duration(seconds: 2), () {
-    Navigator.pushReplacementNamed(
-      context,
-      '/result',
-      arguments: _tapCount,
-    );
-  });
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -152,31 +180,43 @@ void _finish() {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 写真エリア (仮: プレースホルダー、後でimage_picker使用)
-            Container(
-              height: 300,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.photo_camera, size: 64, color: Colors.grey),
-                    Text('写真を選択/撮影してください', style: TextStyle(color: Colors.grey)),
-                  ],
+            // 写真エリア
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 300,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey),
                 ),
+                child: _imageBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(
+                          _imageBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      )
+                    : const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.photo_library, size: 64, color: Colors.grey),
+                            Text('写真を選択（タップ）', style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 32),
-            // カウントダウン
+            // カウントダウン以下同じ...
             Text(
               '$_remainingTime',
               style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            // テキストとボタン
             if (_isRunning) ...[
               const Text('しばくボタンを連打', style: TextStyle(fontSize: 24)),
               const SizedBox(height: 32),
@@ -212,6 +252,7 @@ void _finish() {
     );
   }
 }
+
 
 // 3. 結果画面
 class ResultScreen extends StatelessWidget {
