@@ -3,7 +3,7 @@ import 'home.dart';
 import 'punish.dart';
 import 'result.dart';
 import 'report.dart';
-import 'thanks.dart';//なんかここを付けると↑4行が未使用になる
+import 'thanks.dart';
 
 void main() {
   runApp(const MyApp());
