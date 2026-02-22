@@ -20,7 +20,7 @@ samples, guidance on mobile development, and a full API reference.
 1．https://github.com/WaRara-men （発案）
 
 
-2.
+2. [songchuanxingxin-cmd](https://github.com/songchuanxingxin-cmd)
 （モックアップ・イラスト制作）
 
 3. https://github.com/moriai0707 （リーダー・発表）
